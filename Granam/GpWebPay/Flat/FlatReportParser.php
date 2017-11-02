@@ -7,11 +7,11 @@ use Granam\Strict\Object\StrictObject;
 
 class FlatReportParser extends StrictObject
 {
-    const REPORT_IDENTIFIER_CODE = '00'; // in czech "úvodní věta"
+    const START = '00'; // in czech "úvodní věta"
 
     const PID = '01'; // in czech "věta avíza, úroveň účtování IČO"
     const MERCHANT_PLACE = '02'; // in czech "věta avíza, úroveň účtování Obchodní místo"
-    const TERMINAL = '03'; // in czech "věta avíza, úroveň účtování Terminál"
+    const DAILY_SUMMARY_PER_CARD_TYPE = '03'; // in czech "věta avíza, úroveň účtování Terminál"
     const PID_OF_MERCHANT_WITH_CASHBACK = '04'; // in czech "věta avíza, úroveň účtování IČO pro obchodníka s cashback rozšířením"
     const PLACE_OF_MERCHANT_WITH_CASHBACK = '05'; // in czech "věta avíza, úroveň účtování Obchodní místo pro obchodníka s cashback rozšířením"
     const TERMINAL_OF_MERCHANT_WITH_CASHBACK = '06'; // in czech "věta avíza, úroveň účtování Terminál pro obchodníka s cashback rozšířením"
@@ -27,21 +27,24 @@ class FlatReportParser extends StrictObject
     const DETAIL_SECTION_FOR_MERCHANT_WITH_CASHBACK = '26'; // in czech "věta detailního oddílu pro obchodníka s cashback rozšířením"
     const DETAIL_SECTION_WITH_OPTIONAL_TRANSACTION_ID_FOR_MERCHANT_WITH_CASHBACK = '27'; // in czech "věta detailního oddílu s volitelným id trans. pro obchodníka s cashback rozšířením"
 
-    const DESCRIPTION_OF_ADVICES_AND_DETAILS = '51'; // in czech "popisná věta avíz i detailů"
+    const HEADER_OF_ADVICES_AND_DETAILS = '51'; // in czech "popisná věta avíz i detailů"
     const DESCRIPTION_OF_UNDISCHARGED_DEBTS = '52'; // in czech "popisná věta neumořených dluhů"
     const DESCRIPTION_OF_NEW_HOLDS = '53'; // in czech "popisná věta nových holdů"
     const DESCRIPTION_OF_DISCHARGED_DEBTS = '54'; // in czech "popisná věta umoření dluhů"
 
-    const MERCHANT_ADDRESS_CODE = '98';
-    const MERCHANT_CURRENCY_CODE = '61';
-    const HEADER_CODE = '51';
-    const DAILY_SUMMARY_PER_CARD_TYPE_CODE = '03';
-    const SUMMARY_PER_DAY_CODE = '81';
-    const SUMMARY_PER_DAILY_BATCH_CODE = '85';
-    const SUMMARY_PER_CARD_TYPE = '86';
-    const UNKNOWN_83_CODE = '83'; // ?
-    const PAYMENT_CODE = '24';
-    const END_CODE = '99';
+    const CURRENCY_OF_TRANSACTIONS = '61'; // in czech "uvození měny transakcí"
+
+    const SUMMARY_OF_NEW_MOVEMENTS = '81'; // in czech "součtová věta avíza za dávku nových pohybů"
+    const SUMMARY_OF_DISCHARGED_DEBT = '82'; // in czech "součtová věta avíza umořených dluhů"
+    const SUMMARY_OF_CHARGED_AMOUNT = '83'; // in czech "součtová věta avíza pro zaúčtovanou částku"
+    const SUMMARY_OF_DETAILED_SECTION = '85'; // in czech "součtová věta detailního oddílu"
+    const SUMMARY_OF_DETAILED_SECTION_PER_CARD = '86'; // in czech "součtová věta detailního oddílu za typ karetního produktu"
+    const SUMMARY_OF_NEW_MOVEMENTS_FOR_MERCHANT_WITH_CASHBACK = '89'; // in czech "součtová věta avíza za dávku nových pohybů pro obchodníka s cashback rozšířením"
+    const SUMMARY_OF_DETAILED_SECTION_FOR_MERCHANT_WITH_CASHBACK = '90'; // in czech "součtová věta detailního oddílu pro obchodníka s cashback rozšířením"
+    const SUMMARY_OF_DETAILED_SECTION_PER_CARD_FOR_MERCHANT_WITH_CASHBACK = '91'; // in czech "součtová věta detailního oddílu za typ karetního produktu pro obchodníka s cashback rozšířením"
+    const PID_ADDRESS = '98'; // in czech "adresa IČO"
+
+    const END = '99'; // in czech "závěrečná věta"
 
     const CELL_DELIMITER = '"';
 
@@ -92,7 +95,7 @@ class FlatReportParser extends StrictObject
             }
             unset($row[0]); // remove code from the row
             $rowWithoutCode = array_values($row); // just to get sequential numeric indexes
-            if ($code === self::HEADER_CODE) {
+            if ($code === self::START) {
                 $rowWithoutCode = $this->sanitizeHeader($rowWithoutCode); // sadly there is an error in one of headers
                 $currentHeader = $rowWithoutCode;
             } elseif ($currentHeader) {
