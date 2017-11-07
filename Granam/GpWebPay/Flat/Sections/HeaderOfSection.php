@@ -3,13 +3,14 @@ declare(strict_types=1); // on PHP 7+ are standard PHP methods strict to types o
 
 namespace Granam\GpWebPay\Flat\Sections;
 
-class StartSection extends FlatSection
+class HeaderOfSection extends SingleLineFlatSection
 {
-    const START = '00'; // in czech "úvodní věta"
+    const HEADER_OF_ADVICES_AND_DETAILS = '51';
 
-    public function getKnownCodes(): array
+    public function __construct(array $values)
     {
-        return [self::START];
+        $values = $this->sanitizeHeader($values);
+        parent::__construct($values);
     }
 
     private function sanitizeHeader(array $header): array
@@ -26,4 +27,10 @@ class StartSection extends FlatSection
 
         return $header;
     }
+
+    public function isUnique(): bool
+    {
+        return false; // there can be more than a single header, each per section
+    }
+
 }

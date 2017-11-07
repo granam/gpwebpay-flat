@@ -3,22 +3,15 @@ declare(strict_types=1); // on PHP 7+ are standard PHP methods strict to types o
 
 namespace Granam\GpWebPay\Flat\Sections;
 
-use Granam\Strict\Object\StrictObject;
-
-abstract class FlatSection extends StrictObject
+interface FlatSection
 {
-    /**
-     * @param string $code
-     * @return bool
-     */
-    public function isKnownCode(string $code): bool
-    {
-        return in_array($code, $this->getKnownCodes(), true);
-    }
-
     /**
      * @return array|string[]
      */
-    abstract public function getKnownCodes(): array;
+    public function getValues(): array;
 
+    /**
+     * @return bool
+     */
+    public function isUnique(): bool;
 }

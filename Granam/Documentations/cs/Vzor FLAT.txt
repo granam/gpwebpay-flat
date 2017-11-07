@@ -1,7 +1,7 @@
 00"20160422"123456"m"123450001"00001
 98"Firma s.r.o."Ulice 1234/12"Mesto"100 00
 61"CZK
-51"Datum zpracování"Èíslo sumáøe"Druh karty"Poadovaná èástka"Poplatky"Èastka k úhradì
+51"Datum zpracování"Èíslo sumáøe"Druh karty"Po¾adovaná èástka"Poplatky"Èastka k úhradì
 02"21.04.2016"0160422"MC Commercial Credit"2653.00"-49.86"2603.14
 02"21.04.2016"0160422"MC Consumer Credit"67954.00"-387.60"67566.40
 02"21.04.2016"0160422"MC Consumer Debit"93655.00"-488.71"93166.29

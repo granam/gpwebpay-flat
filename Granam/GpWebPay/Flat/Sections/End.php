@@ -3,13 +3,7 @@ declare(strict_types=1); // on PHP 7+ are standard PHP methods strict to types o
 
 namespace Granam\GpWebPay\Flat\Sections;
 
-class EndSection extends FlatSection
+class End extends SingleLineFlatSection
 {
     const END = '99'; // in czech "závěrečná věta"
-
-    public function getKnownCodes(): array
-    {
-        return [self::END];
-    }
-
 }

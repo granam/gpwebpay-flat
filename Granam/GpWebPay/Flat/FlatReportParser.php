@@ -3,56 +3,11 @@ declare(strict_types=1); // on PHP 7+ are standard PHP methods strict to types o
 
 namespace Granam\GpWebPay\Flat;
 
-use Granam\GpWebPay\Flat\Sections\CurrencySection;
-use Granam\GpWebPay\Flat\Sections\DebtsAndHoldsSection;
-use Granam\GpWebPay\Flat\Sections\DetailsOfDebtsAndTransactionsSection;
-use Granam\GpWebPay\Flat\Sections\EndSection;
-use Granam\GpWebPay\Flat\Sections\FlatSection;
-use Granam\GpWebPay\Flat\Sections\MerchantSection;
-use Granam\GpWebPay\Flat\Sections\StartSection;
-use Granam\GpWebPay\Flat\Sections\SummarySection;
-use Granam\GpWebPay\Flat\Sections\UnchargedTransactionsSection;
 use Granam\Strict\Object\StrictObject;
 
 class FlatReportParser extends StrictObject
 {
     const CELL_DELIMITER = '"';
-
-    public static function createDefault(): FlatReportParser
-    {
-        return new static(
-            new StartSection(),
-            [
-                new CurrencySection(),
-                new DebtsAndHoldsSection(),
-                new DetailsOfDebtsAndTransactionsSection(),
-                new MerchantSection(),
-                new SummarySection(),
-                new UnchargedTransactionsSection(),
-            ],
-            new EndSection()
-        );
-    }
-
-    /** @var StartSection */
-    private $startSection;
-    /** @var array */
-    private $bodySections;
-    /** @var EndSection */
-    private $endSection;
-
-    /**
-     * FlatReportParser constructor.
-     * @param StartSection $startSection
-     * @param array|FlatSection[] $bodySections
-     * @param EndSection $endSection
-     */
-    public function __construct(StartSection $startSection, array $bodySections, EndSection $endSection)
-    {
-        $this->startSection = $startSection;
-        $this->bodySections = $bodySections;
-        $this->endSection = $endSection;
-    }
 
     /**
      * @param array $parsedContent
@@ -73,42 +28,48 @@ class FlatReportParser extends StrictObject
 
     /**
      * @param string $content
-     * @return array|string[][][]
+     * @return FlatContent
      * @throws \Granam\GpWebPay\Flat\Exceptions\ContentToParseIsEmpty
      * @throws \Granam\GpWebPay\Flat\Exceptions\UnexpectedFlatFormat
+     * @throws \Granam\GpWebPay\Flat\Exceptions\CorruptedFlatStructure
      */
-    public function parseCzechContent(string $content): array
+    public function createCzechFlatContent(string $content): FlatContent
     {
-        return $this->parseContent($content, self::CENTRAL_EUROPEAN_ENCODING);
+        return new FlatContent($this->parseValues($content, self::CENTRAL_EUROPEAN_ENCODING));
     }
 
     /**
      * @param string $content
      * @param string $isoEncoding
-     * @return array|string[][][] [86 => [0 => ['MC Consumer Debit', 4, 600, -16.20, 583.80], 1 => ...]]
+     * @return FlatContent
+     * @throws \Granam\GpWebPay\Flat\Exceptions\ContentToParseIsEmpty
+     * @throws \Granam\GpWebPay\Flat\Exceptions\UnexpectedFlatFormat
+     * @throws \Granam\GpWebPay\Flat\Exceptions\CorruptedFlatStructure
+     */
+    public function createFlatContent(string $content, string $isoEncoding): FlatContent
+    {
+        return new FlatContent($this->parseValues($content, $isoEncoding));
+    }
+
+    /**
+     * @param string $content
+     * @return array|string[][][]
      * @throws \Granam\GpWebPay\Flat\Exceptions\ContentToParseIsEmpty
      * @throws \Granam\GpWebPay\Flat\Exceptions\UnexpectedFlatFormat
      */
-    public function parseContent(string $content, string $isoEncoding): array
+    public function parseCzechValues(string $content): array
     {
-        $byCodeIndexedRows = $this->parseRawContent($content, $isoEncoding);
-        $firstRow = reset($byCodeIndexedRows);
-        $firstCode = key($byCodeIndexedRows);
-        if (!$this->startSection->isKnownCode($firstCode)) {
-            throw new Exceptions\CorruptedFlatStructure(
-                'Expected '
-            );
-        }
+        return $this->parseValues($content, self::CENTRAL_EUROPEAN_ENCODING);
     }
 
     /**
      * @param string $content
      * @param string $contentIsoEncoding
-     * @return array|string[][][] [86 => [0 => ['MC Consumer Debit', 4, 600, -16.20, 583.80], 1 => ...]]
+     * @return array|string[][][] [0 => [86 => ['MC Consumer Debit', 4, 600, -16.20, 583.80]], 1 => [51 => ]...]]
      * @throws \Granam\GpWebPay\Flat\Exceptions\ContentToParseIsEmpty
      * @throws \Granam\GpWebPay\Flat\Exceptions\UnexpectedFlatFormat
      */
-    private function parseRawContent(string $content, string $contentIsoEncoding): array
+    public function parseValues(string $content, string $contentIsoEncoding): array
     {
         $content = trim($content);
         if ($content === '') {
@@ -116,7 +77,7 @@ class FlatReportParser extends StrictObject
         }
         $inUtf8 = self::toUtf8($content, $contentIsoEncoding);
         $rows = preg_split('(\n\r|\n|\r)$', $inUtf8); // documentation says "it's always \n\r, but we never know..."
-        $byCodeRows = [];
+        $indexedRows = [];
         foreach ($rows as $stringRow) {
             $row = explode(self::CELL_DELIMITER, $stringRow);
             if (count($row) === 0) {
@@ -128,12 +89,10 @@ class FlatReportParser extends StrictObject
                     'Expected numeric code at the beginning of FLAT row, got ' . var_export($code, true)
                 );
             }
-            unset($row[0]); // remove code from the row
-            $rowWithoutCode = array_values($row); // just to get sequential numeric indexes
-            $byCodeRows[$code][] = $rowWithoutCode;
+            $indexedRows[] = ['code' => $code, 'values' => $row];
         }
 
-        return $byCodeRows;
+        return $indexedRows;
     }
 
     private static function toUtf8(string $string, string $isoEncoding)
@@ -145,24 +104,6 @@ class FlatReportParser extends StrictObject
 
         // iconv is just a wrapper of C iconv function, therefore it is platform-related
         return iconv(self::getIconvEncodingForPlatform($isoEncoding), 'UTF-8', $string);
-    }
-
-    /**
-     * @param array $row
-     * @param array $header
-     * @return array
-     * @throws \Granam\GpWebPay\Flat\Exceptions\ColumnsDoesNotMatchToHeader
-     */
-    private function indexByHeader(array $row, array $header): array
-    {
-        if (count($header) !== count($row)) {
-            throw new Exceptions\ColumnsDoesNotMatchToHeader(
-                'Count of columns of row ' . var_export($row, true) . ' does not match expected count of columns'
-                . ' according to preceding header ' . var_export($header, true)
-            );
-        }
-
-        return array_combine($header /* used as keys */, $row /* provides values */);
     }
 
     /**
@@ -211,7 +152,7 @@ class FlatReportParser extends StrictObject
         }
 
         /** @noinspection ExceptionsAnnotatingAndHandlingInspection */
-        return $this->parseContent($content, $fileEncoding);
+        return $this->parseValues($content, $fileEncoding);
     }
 
     private static function getIconvEncodingForPlatform(string $isoEncoding)
