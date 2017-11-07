@@ -5,7 +5,7 @@ namespace Granam\GpWebPay\Flat;
 
 use Granam\Strict\Object\StrictObject;
 
-abstract class ReportedPaymentKeysMapper extends StrictObject
+abstract class ECommerceTransactionHeaderMapper extends StrictObject
 {
     const NUMBER_OF_CASH_REGISTER = 'number_of_cash_register';
     const NUMBER_OF_SUMMARY = 'number_of_summary';
@@ -13,13 +13,15 @@ abstract class ReportedPaymentKeysMapper extends StrictObject
     const REFERENCE_NUMBER = 'reference_number';
     const TRANSACTION_ID = 'transaction_id';
     const AUTHORIZATION_CODE = 'authorization_code';
-    const PRICE_IN_MERCHANT_CURRENCY = 'price_in_merchant_currency';
+    const PAID_AMOUNT_IN_MERCHANT_CURRENCY = 'paid_amount_in_merchant_currency';
     const FEES_IN_MERCHANT_CURRENCY = 'fees_in_merchant_currency';
-    const PRICE_TO_PAY = 'price_to_pay';
+    const PAID_AMOUNT_WITHOUT_FEES = 'paid_amount_without_fees';
     const CARD_TYPE = 'card_type';
     const ORDER_REF1 = 'order_ref1';
     const ORDER_REF2 = 'order_ref2';
 
+    /** @var string */
+    private $dateFormat;
     /** @var string */
     private $localizedNumberOfCashRegister;
     /** @var string */
@@ -33,49 +35,47 @@ abstract class ReportedPaymentKeysMapper extends StrictObject
     /** @var string */
     private $localizedAuthorizationCode;
     /** @var string */
-    private $localizedPriceInMerchantCurrency;
+    private $localizedPaidAmountInMerchantCurrency;
     /** @var string */
     private $localizedFeesInMerchantCurrency;
     /** @var string */
-    private $localizedPriceToPay;
+    private $localizedPaidAmountWithoutFees;
     /** @var string */
     private $localizedCardType;
     /** @var string */
     private $localizedOrderRef1;
     /** @var string */
     private $localizedOrderRef2;
-    /** @var string */
-    private $dateFormat;
 
     protected function __construct(
+        string $dateFormat,
         string $localizedNumberOfCashRegister,
         string $localizedNumberOfSummary,
         string $localizedTransactionDate,
         string $localizedReferenceNumber,
         string $localizedTransactionId,
         string $localizedAuthorizationCode,
-        string $localizedPriceInMerchantCurrency,
+        string $localizedPaidAmountInMerchantCurrency,
         string $localizedFeesInMerchantCurrency,
-        string $localizedPriceToPay,
+        string $localizedPaidAmountWithoutFees,
         string $localizedCardType,
         string $localizedOrderRef1,
-        string $localizedOrderRef2,
-        string $dateFormat
+        string $localizedOrderRef2
     )
     {
+        $this->dateFormat = $dateFormat;
         $this->localizedNumberOfCashRegister = $localizedNumberOfCashRegister;
         $this->localizedNumberOfSummary = $localizedNumberOfSummary;
         $this->localizedTransactionDate = $localizedTransactionDate;
         $this->localizedReferenceNumber = $localizedReferenceNumber;
         $this->localizedTransactionId = $localizedTransactionId;
         $this->localizedAuthorizationCode = $localizedAuthorizationCode;
-        $this->localizedPriceInMerchantCurrency = $localizedPriceInMerchantCurrency;
+        $this->localizedPaidAmountInMerchantCurrency = $localizedPaidAmountInMerchantCurrency;
         $this->localizedFeesInMerchantCurrency = $localizedFeesInMerchantCurrency;
-        $this->localizedPriceToPay = $localizedPriceToPay;
+        $this->localizedPaidAmountWithoutFees = $localizedPaidAmountWithoutFees;
         $this->localizedCardType = $localizedCardType;
         $this->localizedOrderRef1 = $localizedOrderRef1;
         $this->localizedOrderRef2 = $localizedOrderRef2;
-        $this->dateFormat = $dateFormat;
     }
 
     /**
@@ -153,7 +153,7 @@ abstract class ReportedPaymentKeysMapper extends StrictObject
      */
     public function getAuthorizationCode(array $values): string
     {
-        return $this->getValue($values, $this->localizedAuthorizationCode);
+        return ''; // this is sadly NOT sent by GpWebPay
     }
 
     /**
@@ -161,9 +161,9 @@ abstract class ReportedPaymentKeysMapper extends StrictObject
      * @return float
      * @throws \Granam\GpWebPay\Flat\Exceptions\MissingMappedValue
      */
-    public function getPriceInMerchantCurrency(array $values): float
+    public function getPaidAmountInMerchantCurrency(array $values): float
     {
-        return (float)$this->getValue($values, $this->localizedPriceInMerchantCurrency);
+        return (float)$this->getValue($values, $this->localizedPaidAmountInMerchantCurrency);
     }
 
     /**
@@ -181,9 +181,9 @@ abstract class ReportedPaymentKeysMapper extends StrictObject
      * @return float
      * @throws \Granam\GpWebPay\Flat\Exceptions\MissingMappedValue
      */
-    public function getPriceToPay(array $values): float
+    public function getPaidAmountWithoutFees(array $values): float
     {
-        return (float)$this->getValue($values, $this->localizedPriceToPay);
+        return (float)$this->getValue($values, $this->localizedPaidAmountWithoutFees);
     }
 
     /**
@@ -214,5 +214,13 @@ abstract class ReportedPaymentKeysMapper extends StrictObject
     public function getOrderRef2(array $values): string
     {
         return $this->getValue($values, $this->localizedOrderRef2);
+    }
+
+    /**
+     * @return string
+     */
+    public function getLocalizedAuthorizationCode(): string
+    {
+        return $this->localizedAuthorizationCode;
     }
 }

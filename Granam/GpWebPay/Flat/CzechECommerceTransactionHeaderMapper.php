@@ -3,11 +3,12 @@ declare(strict_types=1); // on PHP 7+ are standard PHP methods strict to types o
 
 namespace Granam\GpWebPay\Flat;
 
-class CzechReportedPaymentKeysMapper extends ReportedPaymentKeysMapper
+class CzechECommerceTransactionHeaderMapper extends ECommerceTransactionHeaderMapper
 {
     public function __construct()
     {
         parent::__construct(
+            'd.m.Y', // Date format
             'Číslo pokladny',
             'Číslo sumáře',
             'Datum transakce',
@@ -19,7 +20,6 @@ class CzechReportedPaymentKeysMapper extends ReportedPaymentKeysMapper
             'Částka k úhradě',
             'Druh karty',
             'OrderRef1',
-            'OrderRef2Ref1',
             'OrderRef2'
         );
     }

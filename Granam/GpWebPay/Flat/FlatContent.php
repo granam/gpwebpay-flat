@@ -13,7 +13,7 @@ use Granam\GpWebPay\Flat\Sections\DetailForMerchantWithCashback;
 use Granam\GpWebPay\Flat\Sections\DetailWithOptionalTransactionId;
 use Granam\GpWebPay\Flat\Sections\DetailWithOptionalTransactionIdForMerchantWithCashback;
 use Granam\GpWebPay\Flat\Sections\DischargedDebt;
-use Granam\GpWebPay\Flat\Sections\ECommerceTransaction;
+use Granam\GpWebPay\Flat\Sections\ECommerceTransactions;
 use Granam\GpWebPay\Flat\Sections\End;
 use Granam\GpWebPay\Flat\Sections\HeaderOfSection;
 use Granam\GpWebPay\Flat\Sections\TransactionsSummaryPerCardType;
@@ -60,8 +60,8 @@ class FlatContent extends StrictObject
     private $undischargedDebt;
     /** @var DischargedDebt|null */
     private $dischargedDebt;
-    /** @var ECommerceTransaction|null */
-    private $ECommerceTransaction;
+    /** @var ECommerceTransactions|null */
+    private $eCommerceTransactions;
     /** @var DetailWithOptionalTransactionId|null */
     private $detailSectionWithOptionalTransactionId;
     /** @var DetailForMerchantWithCashback|null */
@@ -100,11 +100,12 @@ class FlatContent extends StrictObject
     private $transactionsSummaryPerCardTypeForTerminal;
 
     /**
-     * FlatContent constructor.
      * @param array|string[][][] $indexedRows [0 => [code => '00', values => [...]]]
+     * @param ECommerceTransactionHeaderMapper $eCommerceTransactionHeaderMapper
      * @throws \Granam\GpWebPay\Flat\Exceptions\CorruptedFlatStructure
+     * @throws \Granam\GpWebPay\Flat\Exceptions\UnexpectedCode
      */
-    public function __construct(array $indexedRows)
+    public function __construct(array $indexedRows, ECommerceTransactionHeaderMapper $eCommerceTransactionHeaderMapper)
     {
         $header = null;
         $previousCode = false;
@@ -113,12 +114,12 @@ class FlatContent extends StrictObject
             $code = $row['code'];
             /** @var array|string[] $values */
             $values = $row['values'];
-            if ($previousCode !== false && $previousCode !== $code) {
+            if ($previousCode !== false && $previousCode !== HeaderOfSection::HEADER_OF_SECTION && $previousCode !== $code) {
                 $header = null; // header is valid only for a block of following same-code section
             }
             switch ($code) {
-                case HeaderOfSection::HEADER_OF_ADVICES_AND_DETAILS :
-                    $header = new HeaderOfSection($values);
+                case HeaderOfSection::HEADER_OF_SECTION :
+                    $header = new HeaderOfSection($values, $eCommerceTransactionHeaderMapper);
                     break;
                 case Start::START :
                     if ($this->start !== null) {
@@ -174,11 +175,18 @@ class FlatContent extends StrictObject
                         $this->dischargedDebt->addValues($values);
                     }
                     break;
-                case ECommerceTransaction::E_COMMERCE_TRANSACTION :
-                    if ($this->ECommerceTransaction === null) {
-                        $this->ECommerceTransaction = new ECommerceTransaction($values, $header);
+                case ECommerceTransactions::E_COMMERCE_TRANSACTION :
+                    if ($this->eCommerceTransactions === null) {
+                        if ($header === null) {
+                            throw new Exceptions\CorruptedFlatStructure(
+                                "Missing preceding header '" . HeaderOfSection::HEADER_OF_SECTION
+                                . "' for '" . ECommerceTransactions::E_COMMERCE_TRANSACTION . "'"
+                                . ' (' . ECommerceTransactions::class . ')'
+                            );
+                        }
+                        $this->eCommerceTransactions = new ECommerceTransactions($values, $header, $eCommerceTransactionHeaderMapper);
                     } else {
-                        $this->ECommerceTransaction->addValues($values);
+                        $this->eCommerceTransactions->addValues($values);
                     }
                     break;
                 case DetailWithOptionalTransactionId::DETAIL_WITH_OPTIONAL_TRANSACTION_ID :
@@ -322,18 +330,18 @@ class FlatContent extends StrictObject
                     break;
 
                 default :
-                    throw new Exceptions\CorruptedFlatStructure("Unknown code {$row['code']}");
+                    throw new Exceptions\UnexpectedCode("Unknown code {$row['code']}");
             }
             $previousCode = $code;
         }
         if ($this->start === null) {
-            throw new Exceptions\CorruptedFlatStructure('Missing required "' . Start::START . '" section');
+            throw new Exceptions\CorruptedFlatStructure("Missing required '" . Start::START . "' section (" . Start::class . ')');
         }
         if ($this->currency === null) {
-            throw new Exceptions\CorruptedFlatStructure('Missing required "' . Currency::CURRENCY_OF_TRANSACTIONS . '" section');
+            throw new Exceptions\CorruptedFlatStructure("Missing required '" . Currency::CURRENCY_OF_TRANSACTIONS . "' section (" . Currency::class . ')');
         }
-        if ($this->end) {
-            throw new Exceptions\CorruptedFlatStructure("Missing required '" . End::END . "' section");
+        if ($this->end === null) {
+            throw new Exceptions\CorruptedFlatStructure("Missing required '" . End::END . "' section (" . End::class . ')');
         }
     }
 
@@ -426,11 +434,11 @@ class FlatContent extends StrictObject
     }
 
     /**
-     * @return ECommerceTransaction|null
+     * @return ECommerceTransactions|null
      */
-    public function getECommerceTransaction():? ECommerceTransaction
+    public function getECommerceTransactions():? ECommerceTransactions
     {
-        return $this->ECommerceTransaction;
+        return $this->eCommerceTransactions;
     }
 
     /**

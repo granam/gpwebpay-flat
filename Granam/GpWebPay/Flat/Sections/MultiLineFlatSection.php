@@ -13,18 +13,17 @@ abstract class MultiLineFlatSection extends StrictObject implements FlatSection
     /** @var array|string[] */
     private $values = [];
     /** @var HeaderOfSection|null */
-    private $header;
+    private $headerOfSection;
 
     /**
-     * MultiLineFlatSection constructor.
      * @param array $values
-     * @param HeaderOfSection|null $header
+     * @param HeaderOfSection|null $headerOfSection
      * @throws \Granam\GpWebPay\Flat\Exceptions\CorruptedFlatStructure
      */
-    public function __construct(array $values, ?HeaderOfSection $header = null)
+    public function __construct(array $values, ?HeaderOfSection $headerOfSection = null)
     {
+        $this->headerOfSection = $headerOfSection;
         $this->addValues($values);
-        $this->header = $header;
     }
 
     /**
@@ -37,13 +36,33 @@ abstract class MultiLineFlatSection extends StrictObject implements FlatSection
             throw new CorruptedFlatStructure('Values for ' . static::class . ' are empty');
         }
         array_map(function ($value) {
-            if ($value !== null && !is_scalar($value)) {
+            if (!is_scalar($value)) {
                 throw new CorruptedFlatStructure(
-                    'Values of a section have to be flat array, got ' . ValueDescriber::describe($value) . ' for ' . static::class
+                    'Values of a section have to be flat array of scalars, got ' . ValueDescriber::describe($value) . ' for ' . static::class
                 );
             }
         }, $values);
-        $this->values[] = $values;
+        if ($this->headerOfSection === null) {
+            $this->values[] = $values;
+            return;
+        }
+        $headerValues = $this->headerOfSection->getValues();
+        if (count($headerValues) !== count($values)) {
+            throw new CorruptedFlatStructure(
+                'Count of values for ' . static::class . ' is ' . count($values) . ', but header expected ' . count($headerValues) . ' values'
+                . ";\n values: '" . implode(',', $values) . "'"
+                . ";\n header: '" . implode(',', $headerValues) . "'"
+            );
+        }
+        $mappedValues = [];
+        reset($headerValues);
+        foreach ($values as $value) {
+            $key = current($headerValues);
+            $mappedValues[$key] = $value;
+            next($headerValues);
+        }
+
+        $this->values[] = $mappedValues;
     }
 
     /**
@@ -57,9 +76,9 @@ abstract class MultiLineFlatSection extends StrictObject implements FlatSection
     /**
      * @return HeaderOfSection|null
      */
-    public function getHeader():? HeaderOfSection
+    public function getHeaderOfSection():? HeaderOfSection
     {
-        return $this->header;
+        return $this->headerOfSection;
     }
 
     public function isUnique(): bool

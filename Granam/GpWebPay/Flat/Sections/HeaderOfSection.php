@@ -3,18 +3,30 @@ declare(strict_types=1); // on PHP 7+ are standard PHP methods strict to types o
 
 namespace Granam\GpWebPay\Flat\Sections;
 
+use Granam\GpWebPay\Flat\ECommerceTransactionHeaderMapper;
+
 class HeaderOfSection extends SingleLineFlatSection
 {
-    const HEADER_OF_ADVICES_AND_DETAILS = '51';
+    const HEADER_OF_SECTION = '51';
 
-    public function __construct(array $values)
+    /**
+     * @param array $values
+     * @param ECommerceTransactionHeaderMapper $commerceTransactionHeaderMapper
+     * @throws \Granam\GpWebPay\Flat\Exceptions\CorruptedFlatStructure
+     */
+    public function __construct(array $values, ECommerceTransactionHeaderMapper $commerceTransactionHeaderMapper)
     {
-        $values = $this->sanitizeHeader($values);
+        $values = $this->sanitizeHeader($values, $commerceTransactionHeaderMapper);
         parent::__construct($values);
     }
 
-    private function sanitizeHeader(array $header): array
+    private function sanitizeHeader(array $header, ECommerceTransactionHeaderMapper $commerceTransactionHeaderMapper): array
     {
+        $nameOfAuthorizationCode = $commerceTransactionHeaderMapper->getLocalizedAuthorizationCode();
+        $authorizationCodeKey = array_search($nameOfAuthorizationCode, $header, true);
+        if ($authorizationCodeKey !== false) {
+            unset($header[$authorizationCodeKey]);
+        }
         $orderRef2Ref1Key = array_search('OrderRef2Ref1', $header, true);
         if ($orderRef2Ref1Key === false) {
             return $header;
@@ -32,5 +44,4 @@ class HeaderOfSection extends SingleLineFlatSection
     {
         return false; // there can be more than a single header, each per section
     }
-
 }

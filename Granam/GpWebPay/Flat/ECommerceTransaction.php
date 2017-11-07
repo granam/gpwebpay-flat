@@ -5,35 +5,36 @@ namespace Granam\GpWebPay\Flat;
 
 use Granam\Strict\Object\StrictObject;
 
-class ReportedPayment extends StrictObject
+class ECommerceTransaction extends StrictObject
 {
+
     private $numberOfCashRegister;
     private $numberOfSummary;
     private $transactionDate;
     private $referenceNumber;
     private $transactionId;
     private $authorizationCode;
-    private $priceInMerchantCurrency;
+    private $paidAmountInMerchantCurrency;
     private $feesInMerchantCurrency;
-    private $priceToPay;
+    private $paidAmountWithoutFees;
     private $cardType;
     private $orderRef1;
     private $orderRef2;
 
-    public function __construct(array $values, ReportedPaymentKeysMapper $reportedPaymentKeysMapper)
+    public function __construct(array $values, ECommerceTransactionHeaderMapper $eCommerceTransactionHeaderMapper)
     {
-        $this->numberOfCashRegister = $reportedPaymentKeysMapper->getNumberOfCashRegister($values);
-        $this->numberOfSummary = $reportedPaymentKeysMapper->getNumberOfSummary($values);
-        $this->transactionDate = $reportedPaymentKeysMapper->getTransactionDate($values);
-        $this->referenceNumber = $reportedPaymentKeysMapper->getReferenceNumber($values);
-        $this->transactionId = $reportedPaymentKeysMapper->getTransactionId($values);
-        $this->authorizationCode = $reportedPaymentKeysMapper->getAuthorizationCode($values);
-        $this->priceInMerchantCurrency = $reportedPaymentKeysMapper->getPriceInMerchantCurrency($values);
-        $this->feesInMerchantCurrency = $reportedPaymentKeysMapper->getFeesInMerchantCurrency($values);
-        $this->priceToPay = $reportedPaymentKeysMapper->getPriceToPay($values);
-        $this->cardType = $reportedPaymentKeysMapper->getCardType($values);
-        $this->orderRef1 = $reportedPaymentKeysMapper->getOrderRef1($values);
-        $this->orderRef2 = $reportedPaymentKeysMapper->getOrderRef2($values);
+        $this->numberOfCashRegister = $eCommerceTransactionHeaderMapper->getNumberOfCashRegister($values);
+        $this->numberOfSummary = $eCommerceTransactionHeaderMapper->getNumberOfSummary($values);
+        $this->transactionDate = $eCommerceTransactionHeaderMapper->getTransactionDate($values);
+        $this->referenceNumber = $eCommerceTransactionHeaderMapper->getReferenceNumber($values);
+        $this->transactionId = $eCommerceTransactionHeaderMapper->getTransactionId($values);
+        $this->authorizationCode = $eCommerceTransactionHeaderMapper->getAuthorizationCode($values);
+        $this->paidAmountInMerchantCurrency = $eCommerceTransactionHeaderMapper->getPaidAmountInMerchantCurrency($values);
+        $this->feesInMerchantCurrency = $eCommerceTransactionHeaderMapper->getFeesInMerchantCurrency($values);
+        $this->paidAmountWithoutFees = $eCommerceTransactionHeaderMapper->getPaidAmountWithoutFees($values);
+        $this->cardType = $eCommerceTransactionHeaderMapper->getCardType($values);
+        $this->orderRef1 = $eCommerceTransactionHeaderMapper->getOrderRef1($values);
+        $this->orderRef2 = $eCommerceTransactionHeaderMapper->getOrderRef2($values);
     }
 
     /**
@@ -87,9 +88,9 @@ class ReportedPayment extends StrictObject
     /**
      * @return float
      */
-    public function getPriceInMerchantCurrency(): float
+    public function getPaidAmountInMerchantCurrency(): float
     {
-        return $this->priceInMerchantCurrency;
+        return $this->paidAmountInMerchantCurrency;
     }
 
     /**
@@ -103,9 +104,9 @@ class ReportedPayment extends StrictObject
     /**
      * @return float
      */
-    public function getPriceToPay(): float
+    public function getPaidAmountWithoutFees(): float
     {
-        return $this->priceToPay;
+        return $this->paidAmountWithoutFees;
     }
 
     /**

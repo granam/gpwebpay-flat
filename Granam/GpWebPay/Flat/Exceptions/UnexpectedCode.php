@@ -3,7 +3,7 @@ declare(strict_types=1); // on PHP 7+ are standard PHP methods strict to types o
 
 namespace Granam\GpWebPay\Flat\Exceptions;
 
-class ColumnsDoesNotMatchToHeader extends ParsingFlatContentProblem
+class UnexpectedCode extends UnexpectedFlatFormat
 {
 
 }

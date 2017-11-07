@@ -8,23 +8,49 @@ use Granam\Strict\Object\StrictObject;
 class FlatReportParser extends StrictObject
 {
     const CELL_DELIMITER = '"';
+    const CENTRAL_EUROPEAN_ENCODING = 'ISO-8859-2'; // which means CP1250 in Windows naming
 
     /**
-     * @param array $parsedContent
-     * @param ReportedPaymentKeysMapper $reportedPaymentKeysMapper
-     * @return array|ReportedPayment[]
+     * @param string $czechFileName
+     * @param ECommerceTransactionHeaderMapper $eCommerceTransactionHeaderMapper
+     * @return FlatContent
+     * @throws \Granam\GpWebPay\Flat\Exceptions\CanNotReadFlatFile
+     * @throws \Granam\GpWebPay\Flat\Exceptions\ReadingContentOfFlatFileFailed
+     * @throws \Granam\GpWebPay\Flat\Exceptions\FlatFileIsEmpty
+     * @throws \Granam\GpWebPay\Flat\Exceptions\ContentToParseIsEmpty
+     * @throws \Granam\GpWebPay\Flat\Exceptions\UnexpectedFlatFormat
+     * @throws \Granam\GpWebPay\Flat\Exceptions\CorruptedFlatStructure
+     * @throws \Granam\GpWebPay\Flat\Exceptions\UnexpectedCode
      */
-    public function createPayments(array $parsedContent, ReportedPaymentKeysMapper $reportedPaymentKeysMapper): array
+    public function createFlatContentFromCzechFile(
+        string $czechFileName,
+        ECommerceTransactionHeaderMapper $eCommerceTransactionHeaderMapper
+    ): FlatContent
     {
-        return array_map(
-            function ($paymentValues) use ($reportedPaymentKeysMapper) {
-                return new ReportedPayment($paymentValues, $reportedPaymentKeysMapper);
-            },
-            $parsedContent
-        );
+        return new FlatContent($this->parseCzechFile($czechFileName), $eCommerceTransactionHeaderMapper);
     }
 
-    const CENTRAL_EUROPEAN_ENCODING = 'ISO-8859-2'; // which means CP1250 in Windows naming
+    /**
+     * @param string $fileName
+     * @param string $isoEncoding
+     * @param ECommerceTransactionHeaderMapper $eCommerceTransactionHeaderMapper
+     * @return FlatContent
+     * @throws \Granam\GpWebPay\Flat\Exceptions\CanNotReadFlatFile
+     * @throws \Granam\GpWebPay\Flat\Exceptions\ReadingContentOfFlatFileFailed
+     * @throws \Granam\GpWebPay\Flat\Exceptions\FlatFileIsEmpty
+     * @throws \Granam\GpWebPay\Flat\Exceptions\ContentToParseIsEmpty
+     * @throws \Granam\GpWebPay\Flat\Exceptions\UnexpectedFlatFormat
+     * @throws \Granam\GpWebPay\Flat\Exceptions\CorruptedFlatStructure
+     * @throws \Granam\GpWebPay\Flat\Exceptions\UnexpectedCode
+     */
+    public function createFlatContentFromFile(
+        string $fileName,
+        string $isoEncoding,
+        ECommerceTransactionHeaderMapper $eCommerceTransactionHeaderMapper
+    ): FlatContent
+    {
+        return new FlatContent($this->parseFile($fileName, $isoEncoding), $eCommerceTransactionHeaderMapper);
+    }
 
     /**
      * @param string $content
@@ -32,23 +58,33 @@ class FlatReportParser extends StrictObject
      * @throws \Granam\GpWebPay\Flat\Exceptions\ContentToParseIsEmpty
      * @throws \Granam\GpWebPay\Flat\Exceptions\UnexpectedFlatFormat
      * @throws \Granam\GpWebPay\Flat\Exceptions\CorruptedFlatStructure
+     * @throws \Granam\GpWebPay\Flat\Exceptions\UnexpectedCode
      */
     public function createCzechFlatContent(string $content): FlatContent
     {
-        return new FlatContent($this->parseValues($content, self::CENTRAL_EUROPEAN_ENCODING));
+        return new FlatContent(
+            $this->parseValues($content, self::CENTRAL_EUROPEAN_ENCODING),
+            new CzechECommerceTransactionHeaderMapper()
+        );
     }
 
     /**
      * @param string $content
      * @param string $isoEncoding
+     * @param ECommerceTransactionHeaderMapper $eCommerceTransactionHeaderMapper
      * @return FlatContent
      * @throws \Granam\GpWebPay\Flat\Exceptions\ContentToParseIsEmpty
      * @throws \Granam\GpWebPay\Flat\Exceptions\UnexpectedFlatFormat
      * @throws \Granam\GpWebPay\Flat\Exceptions\CorruptedFlatStructure
+     * @throws \Granam\GpWebPay\Flat\Exceptions\UnexpectedCode
      */
-    public function createFlatContent(string $content, string $isoEncoding): FlatContent
+    public function createFlatContent(
+        string $content,
+        string $isoEncoding,
+        ECommerceTransactionHeaderMapper $eCommerceTransactionHeaderMapper
+    ): FlatContent
     {
-        return new FlatContent($this->parseValues($content, $isoEncoding));
+        return new FlatContent($this->parseValues($content, $isoEncoding), $eCommerceTransactionHeaderMapper);
     }
 
     /**
@@ -76,7 +112,7 @@ class FlatReportParser extends StrictObject
             throw new Exceptions\ContentToParseIsEmpty('Nothing to parse. We got empty string');
         }
         $inUtf8 = self::toUtf8($content, $contentIsoEncoding);
-        $rows = preg_split('(\n\r|\n|\r)$', $inUtf8); // documentation says "it's always \n\r, but we never know..."
+        $rows = preg_split('~(\r\n|\n|\r)~', $inUtf8, -1, PREG_SPLIT_NO_EMPTY); // documentation says "it's always \n\r, but we never know..."
         $indexedRows = [];
         foreach ($rows as $stringRow) {
             $row = explode(self::CELL_DELIMITER, $stringRow);
@@ -89,6 +125,7 @@ class FlatReportParser extends StrictObject
                     'Expected numeric code at the beginning of FLAT row, got ' . var_export($code, true)
                 );
             }
+            unset($row[0]); // removing code from values
             $indexedRows[] = ['code' => $code, 'values' => $row];
         }
 
@@ -99,7 +136,7 @@ class FlatReportParser extends StrictObject
     {
         /** @link https://stackoverflow.com/questions/8233517/what-is-the-difference-between-iconv-and-mb-convert-encoding-in-php# */
         if (function_exists('mb_convert_encoding')) {
-            return mb_convert_encoding($string, $isoEncoding, 'UTF-8'); // works same regardless of platform
+            return mb_convert_encoding($string, 'UTF-8', mb_detect_encoding($string, [$isoEncoding, 'UTF-8'], true)); // works same regardless of platform
         }
 
         // iconv is just a wrapper of C iconv function, therefore it is platform-related
