@@ -11,7 +11,8 @@ This library is released under [MIT licence](./LICENCE), which means any harm ca
 
 - send a request to [helpdesk@globalpayments.cz](helpdesk@globalpayments.cz) to get daily reports of transactions in **FLAT** format to an email of your choice
 - add this library to your project ```composer require granam/gpwebpay-flat```
-- let it to parse FLAT report from an email *(or from a file, or from a string content... it's up to you)*
+- let it to parse FLAT report from an email (or from a file, or from a string content... it's up to you)
+  - *note: [PHP IMAP extension](http://php.net/manual/en/imap.setup.php) is needed to fetch email*
 ```php
 <?php
 namespace Coolest\Fan;

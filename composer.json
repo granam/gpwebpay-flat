@@ -39,5 +39,8 @@
     "psr-4": {
       "Granam\\": "Granam/"
     }
+  },
+  "suggest" : {
+    "ext-imap": "Needed to fetch FLAT file directly from an email via IMAP protocol"
   }
 }
