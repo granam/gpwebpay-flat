@@ -15,7 +15,7 @@ class FlatReportParser extends StrictObject
 
     /**
      * @param ImapEmailAttachmentFetcher $imapEmailAttachmentFetcher
-     * @param \DateTime $emailOfDate
+     * @param \DateTime $emailOfDay
      * @param CzechECommerceTransactionHeaderMapper $eCommerceTransactionHeaderMapper
      * @return FlatContent|null
      * @throws \Granam\GpWebPay\Flat\Exceptions\TooManyFlatAttachmentsFromSingleDay
@@ -29,13 +29,13 @@ class FlatReportParser extends StrictObject
      */
     public function createFlatContentFromCzechEmailAttachment(
         ImapEmailAttachmentFetcher $imapEmailAttachmentFetcher,
-        \DateTime $emailOfDate,
+        \DateTime $emailOfDay,
         CzechECommerceTransactionHeaderMapper $eCommerceTransactionHeaderMapper
     )
     {
         return $this->createFlatContentFromEmailAttachment(
             $imapEmailAttachmentFetcher,
-            $emailOfDate,
+            $emailOfDay,
             new DateFormat(self::CZECH_EMAIL_SUBJECT_DATE_FORMAT),
             self::CENTRAL_EUROPEAN_ENCODING,
             $eCommerceTransactionHeaderMapper
@@ -44,7 +44,7 @@ class FlatReportParser extends StrictObject
 
     /**
      * @param ImapEmailAttachmentFetcher $imapEmailAttachmentFetcher
-     * @param \DateTime $emailOfDate
+     * @param \DateTime $emailOfDay
      * @param DateFormat $emailSubjectDateFormat
      * @param string $flatAttachmentIsoEncoding
      * @param ECommerceTransactionHeaderMapper $eCommerceTransactionHeaderMapper
@@ -60,21 +60,21 @@ class FlatReportParser extends StrictObject
      */
     public function createFlatContentFromEmailAttachment(
         ImapEmailAttachmentFetcher $imapEmailAttachmentFetcher,
-        \DateTime $emailOfDate,
+        \DateTime $emailOfDay,
         DateFormat $emailSubjectDateFormat,
         string $flatAttachmentIsoEncoding,
         ECommerceTransactionHeaderMapper $eCommerceTransactionHeaderMapper
     )
     {
-        $filter = (new ImapSearchCriteria())->filterSubjectContains('OMS - data file ' . $emailSubjectDateFormat->format($emailOfDate));
+        $filter = (new ImapSearchCriteria())->filterSubjectContains('OMS - data file ' . $emailSubjectDateFormat->format($emailOfDay));
         $attachments = $imapEmailAttachmentFetcher->fetchAttachments($filter);
-        $attachments = $this->filterAttachments($attachments, $emailOfDate);
+        $attachments = $this->filterAttachments($attachments, $emailOfDay);
         if (count($attachments) === 0) {
             return null;
         }
         if (count($attachments) > 1) {
             throw new Exceptions\TooManyFlatAttachmentsFromSingleDay(
-                'Expected a single email attachment with a FLAT file for date ' . $emailOfDate->format('c')
+                'Expected a single email attachment with a FLAT file for date ' . $emailOfDay->format('c')
                 . ', got ' . count($attachments) . ' of them: ' . var_export($attachments, true)
             );
         }
@@ -87,12 +87,12 @@ class FlatReportParser extends StrictObject
         );
     }
 
-    private function filterAttachments(array $attachments, \DateTime $ofDate)
+    private function filterAttachments(array $attachments, \DateTime $ofDay)
     {
         $filteredAttachments = [];
         foreach ($attachments as $attachment) {
             if (preg_match(
-                '~^VDAT-\d+-\d+-\d+-' . preg_quote($ofDate->format('Ymd'), '~') . '\.TXT$~',
+                '~^VDAT-\d+-\d+-\d+-' . preg_quote($ofDay->format('Ymd'), '~') . '\.TXT$~',
                 $attachment['name'] ?: $attachment['original_filename'])
             ) {
                 $filteredAttachments[] = $attachment;
