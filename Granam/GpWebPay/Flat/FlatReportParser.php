@@ -44,7 +44,7 @@ class FlatReportParser extends StrictObject
 
     /**
      * @param ImapEmailAttachmentFetcher $imapEmailAttachmentFetcher
-     * @param \DateTime $emailOfDay
+     * @param \DateTime $reportOfDay
      * @param DateFormat $emailSubjectDateFormat
      * @param string $flatAttachmentIsoEncoding
      * @param ECommerceTransactionHeaderMapper $eCommerceTransactionHeaderMapper
@@ -60,21 +60,25 @@ class FlatReportParser extends StrictObject
      */
     public function createFlatContentFromEmailAttachment(
         ImapEmailAttachmentFetcher $imapEmailAttachmentFetcher,
-        \DateTime $emailOfDay,
+        \DateTime $reportOfDay,
         DateFormat $emailSubjectDateFormat,
         string $flatAttachmentIsoEncoding,
         ECommerceTransactionHeaderMapper $eCommerceTransactionHeaderMapper
     )
     {
-        $filter = (new ImapSearchCriteria())->filterSubjectContains('OMS - data file ' . $emailSubjectDateFormat->format($emailOfDay));
+        // emails from "monday" are send day after
+        $emailOfDay = $reportOfDay->modify('+ 1 day');
+        $filter = (new ImapSearchCriteria())
+            ->filterSubjectContains('OMS - data file ' . $emailSubjectDateFormat->format($emailOfDay))
+            ->filterByDate($emailOfDay);
         $attachments = $imapEmailAttachmentFetcher->fetchAttachments($filter);
-        $attachments = $this->filterAttachments($attachments, $emailOfDay);
+        $attachments = $this->filterAttachments($attachments, $reportOfDay);
         if (count($attachments) === 0) {
             return null;
         }
         if (count($attachments) > 1) {
             throw new Exceptions\TooManyFlatAttachmentsFromSingleDay(
-                'Expected a single email attachment with a FLAT file for date ' . $emailOfDay->format('c')
+                'Expected a single email attachment with a FLAT file for date ' . $reportOfDay->format('c')
                 . ', got ' . count($attachments) . ' of them: ' . var_export($attachments, true)
             );
         }
