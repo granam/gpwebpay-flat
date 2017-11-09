@@ -5,7 +5,7 @@ namespace Granam\GpWebPay\Flat;
 
 use Granam\Strict\Object\StrictObject;
 
-abstract class ECommerceTransactionHeaderMapper extends StrictObject
+class ECommerceTransactionHeaderMapper extends StrictObject
 {
     const NUMBER_OF_CASH_REGISTER = 'number_of_cash_register';
     const NUMBER_OF_SUMMARY = 'number_of_summary';
@@ -47,8 +47,8 @@ abstract class ECommerceTransactionHeaderMapper extends StrictObject
     /** @var string */
     private $localizedOrderRef2;
 
-    protected function __construct(
-        string $dateFormat,
+    public function __construct(
+        DateFormat $dateFormat,
         string $localizedNumberOfCashRegister,
         string $localizedNumberOfSummary,
         string $localizedTransactionDate,
@@ -123,7 +123,7 @@ abstract class ECommerceTransactionHeaderMapper extends StrictObject
      */
     public function getTransactionDate(array $values): \DateTime
     {
-        return \DateTime::createFromFormat($this->dateFormat, $this->getValue($values, $this->localizedTransactionDate));
+        return \DateTime::createFromFormat($this->dateFormat->getAsString(), $this->getValue($values, $this->localizedTransactionDate));
     }
 
     /**

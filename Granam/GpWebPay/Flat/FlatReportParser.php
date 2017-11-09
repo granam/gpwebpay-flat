@@ -3,12 +3,104 @@ declare(strict_types=1); // on PHP 7+ are standard PHP methods strict to types o
 
 namespace Granam\GpWebPay\Flat;
 
+use Granam\Mail\Download\ImapEmailAttachmentFetcher;
+use Granam\Mail\Download\ImapSearchCriteria;
 use Granam\Strict\Object\StrictObject;
 
 class FlatReportParser extends StrictObject
 {
     const CELL_DELIMITER = '"';
     const CENTRAL_EUROPEAN_ENCODING = 'ISO-8859-2'; // which means CP1250 in Windows naming
+    const CZECH_EMAIL_SUBJECT_DATE_FORMAT = 'd.m.Y';
+
+    /**
+     * @param ImapEmailAttachmentFetcher $imapEmailAttachmentFetcher
+     * @param \DateTime $emailOfDate
+     * @param CzechECommerceTransactionHeaderMapper $eCommerceTransactionHeaderMapper
+     * @return FlatContent|null
+     * @throws \Granam\GpWebPay\Flat\Exceptions\TooManyFlatAttachmentsFromSingleDay
+     * @throws \Granam\GpWebPay\Flat\Exceptions\CanNotReadFlatFile
+     * @throws \Granam\GpWebPay\Flat\Exceptions\ReadingContentOfFlatFileFailed
+     * @throws \Granam\GpWebPay\Flat\Exceptions\FlatFileIsEmpty
+     * @throws \Granam\GpWebPay\Flat\Exceptions\ContentToParseIsEmpty
+     * @throws \Granam\GpWebPay\Flat\Exceptions\UnexpectedFlatFormat
+     * @throws \Granam\GpWebPay\Flat\Exceptions\CorruptedFlatStructure
+     * @throws \Granam\GpWebPay\Flat\Exceptions\UnexpectedCode
+     */
+    public function createFlatContentFromCzechEmailAttachment(
+        ImapEmailAttachmentFetcher $imapEmailAttachmentFetcher,
+        \DateTime $emailOfDate,
+        CzechECommerceTransactionHeaderMapper $eCommerceTransactionHeaderMapper
+    )
+    {
+        return $this->createFlatContentFromEmailAttachment(
+            $imapEmailAttachmentFetcher,
+            $emailOfDate,
+            new DateFormat(self::CZECH_EMAIL_SUBJECT_DATE_FORMAT),
+            self::CENTRAL_EUROPEAN_ENCODING,
+            $eCommerceTransactionHeaderMapper
+        );
+    }
+
+    /**
+     * @param ImapEmailAttachmentFetcher $imapEmailAttachmentFetcher
+     * @param \DateTime $emailOfDate
+     * @param DateFormat $emailSubjectDateFormat
+     * @param string $flatAttachmentIsoEncoding
+     * @param ECommerceTransactionHeaderMapper $eCommerceTransactionHeaderMapper
+     * @return null|FlatContent
+     * @throws \Granam\GpWebPay\Flat\Exceptions\TooManyFlatAttachmentsFromSingleDay
+     * @throws \Granam\GpWebPay\Flat\Exceptions\CanNotReadFlatFile
+     * @throws \Granam\GpWebPay\Flat\Exceptions\ReadingContentOfFlatFileFailed
+     * @throws \Granam\GpWebPay\Flat\Exceptions\FlatFileIsEmpty
+     * @throws \Granam\GpWebPay\Flat\Exceptions\ContentToParseIsEmpty
+     * @throws \Granam\GpWebPay\Flat\Exceptions\UnexpectedFlatFormat
+     * @throws \Granam\GpWebPay\Flat\Exceptions\CorruptedFlatStructure
+     * @throws \Granam\GpWebPay\Flat\Exceptions\UnexpectedCode
+     */
+    public function createFlatContentFromEmailAttachment(
+        ImapEmailAttachmentFetcher $imapEmailAttachmentFetcher,
+        \DateTime $emailOfDate,
+        DateFormat $emailSubjectDateFormat,
+        string $flatAttachmentIsoEncoding,
+        ECommerceTransactionHeaderMapper $eCommerceTransactionHeaderMapper
+    )
+    {
+        $filter = (new ImapSearchCriteria())->filterSubjectContains('OMS - data file ' . $emailSubjectDateFormat->format($emailOfDate));
+        $attachments = $imapEmailAttachmentFetcher->fetchAttachments($filter);
+        $attachments = $this->filterAttachments($attachments, $emailOfDate);
+        if (count($attachments) === 0) {
+            return null;
+        }
+        if (count($attachments) > 1) {
+            throw new Exceptions\TooManyFlatAttachmentsFromSingleDay(
+                'Expected a single email attachment with a FLAT file for date ' . $emailOfDate->format('c')
+                . ', got ' . count($attachments) . ' of them: ' . var_export($attachments, true)
+            );
+        }
+        $attachment = reset($attachments);
+
+        return $this->createFlatContentFromFile(
+            $attachment['filepath'],
+            $flatAttachmentIsoEncoding,
+            $eCommerceTransactionHeaderMapper
+        );
+    }
+
+    private function filterAttachments(array $attachments, \DateTime $ofDate)
+    {
+        $filteredAttachments = [];
+        foreach ($attachments as $attachment) {
+            if (preg_match(
+                '~^VDAT-\d+-\d+-\d+-' . preg_quote($ofDate->format('Ymd'), '~') . '\.TXT$~',
+                $attachment['name'] ?: $attachment['original_filename'])
+            ) {
+                $filteredAttachments[] = $attachment;
+            }
+        }
+
+        return $filteredAttachments;
+    }
 
     /**
      * @param string $czechFileName
@@ -109,7 +201,7 @@ class FlatReportParser extends StrictObject
     {
         $content = trim($content);
         if ($content === '') {
-            throw new Exceptions\ContentToParseIsEmpty('Nothing to parse. We got empty string');
+            throw new Exceptions\ContentToParseIsEmpty('Nothing to parse . We got empty string');
         }
         $inUtf8 = self::toUtf8($content, $contentIsoEncoding);
         $rows = preg_split('~(\r\n|\n|\r)~', $inUtf8, -1, PREG_SPLIT_NO_EMPTY); // documentation says "it's always \n\r, but we never know..."
@@ -170,14 +262,14 @@ class FlatReportParser extends StrictObject
         if (!is_readable($filename)) {
             throw new Exceptions\CanNotReadFlatFile(
                 "Given FLAT file '{
-                $filename}' can not be read. Ensure it exists and can be accessible."
+                $filename}' can not be read . Ensure it exists and can be accessible . "
             );
         }
         $content = file_get_contents($filename);
         if ($content === false) {
             throw new Exceptions\ReadingContentOfFlatFileFailed(
                 "Can not fetch content from given FLAT file '{
-                $filename}'."
+                $filename}' . "
             );
         }
         $content = trim($content);

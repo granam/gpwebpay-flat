@@ -11,20 +11,27 @@ This library is released under [MIT licence](./LICENCE), which means any harm ca
 
 - send a request to [helpdesk@globalpayments.cz](helpdesk@globalpayments.cz) to get daily reports of transactions in **FLAT** format to an email of your choice
 - add this library to your project ```composer require granam/gpwebpay-flat```
-- let it to parse FLAT report
+- let it to parse FLAT report from an email *(or from a file, or from a string content... it's up to you)*
 ```php
 <?php
 namespace Coolest\Fan;
 
-use Granam\GpWebPay\Flat\CzechECommerceTransactionHeaderMapper;
 use Granam\GpWebPay\Flat\FlatReportParser;
+use Granam\Mail\Download\ImapEmailAttachmentFetcher;
+use Granam\GpWebPay\Flat\CzechECommerceTransactionHeaderMapper;
+use Granam\Mail\Download\ImapReadOnlyConnection;
 
 $flatReportParser = new FlatReportParser();
-$flatContentFromCzechFile = $flatReportParser->createFlatContentFromCzechFile(
-    __DIR__ . '/Granam/Documentations/cs/Vzor FLAT.txt',
+$imapConnection = new ImapReadOnlyConnection('light.in.tunnel@example.com', 'Раѕѕword123', 'imap.example.com' );
+$flatContentFromCzechEmail = $flatReportParser->createFlatContentFromCzechEmailAttachment(
+    new ImapEmailAttachmentFetcher($imapConnection),
+    new \DateTime('2016-04-22'), // search for FLAT file with this date in email subject
     new CzechECommerceTransactionHeaderMapper()
 );
-$eCommerceTransactions = $flatContentFromCzechFile->getECommerceTransactions();
+if($flatContentFromCzechEmail === null) {
+    die('No email with FLAT file has been found for a date 2016-04-22');
+}
+$eCommerceTransactions = $flatContentFromCzechEmail->getECommerceTransactions();
 echo 'We got '.$eCommerceTransactions->count().' of new purchases via GpWebPay gateway!';
 
 ```

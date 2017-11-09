@@ -8,7 +8,7 @@ class CzechECommerceTransactionHeaderMapper extends ECommerceTransactionHeaderMa
     public function __construct()
     {
         parent::__construct(
-            'd.m.Y', // Date format
+            new DateFormat('d.m.Y'), // Date format
             'Číslo pokladny',
             'Číslo sumáře',
             'Datum transakce',
