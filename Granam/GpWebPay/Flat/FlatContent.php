@@ -435,7 +435,7 @@ class FlatContent extends StrictObject
 
     /**
      * @param \DateTime $onlyTransactionsOfDay = null
-     * @return ECommerceTransactions|null
+     * @return ECommerceTransactions|ECommerceTransaction[]|null
      */
     public function getECommerceTransactions(\DateTime $onlyTransactionsOfDay = null):? ECommerceTransactions
     {
