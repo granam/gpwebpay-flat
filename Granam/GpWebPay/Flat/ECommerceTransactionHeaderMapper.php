@@ -22,6 +22,8 @@ class ECommerceTransactionHeaderMapper extends StrictObject
 
     /** @var string */
     private $dateFormat;
+    /** @var \DateTimeZone */
+    private $dateTimeZone;
     /** @var string */
     private $localizedNumberOfCashRegister;
     /** @var string */
@@ -49,6 +51,7 @@ class ECommerceTransactionHeaderMapper extends StrictObject
 
     public function __construct(
         DateFormat $dateFormat,
+        \DateTimeZone $dateTimeZone,
         string $localizedNumberOfCashRegister,
         string $localizedNumberOfSummary,
         string $localizedTransactionDate,
@@ -64,6 +67,7 @@ class ECommerceTransactionHeaderMapper extends StrictObject
     )
     {
         $this->dateFormat = $dateFormat;
+        $this->dateTimeZone = $dateTimeZone;
         $this->localizedNumberOfCashRegister = $localizedNumberOfCashRegister;
         $this->localizedNumberOfSummary = $localizedNumberOfSummary;
         $this->localizedTransactionDate = $localizedTransactionDate;
@@ -123,7 +127,11 @@ class ECommerceTransactionHeaderMapper extends StrictObject
      */
     public function getTransactionDate(array $values): \DateTime
     {
-        return \DateTime::createFromFormat($this->dateFormat->getAsString(), $this->getValue($values, $this->localizedTransactionDate));
+        return \DateTime::createFromFormat(
+            $this->dateFormat->getAsString(),
+            $this->getValue($values, $this->localizedTransactionDate),
+            $this->dateTimeZone
+        );
     }
 
     /**

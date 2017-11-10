@@ -9,6 +9,7 @@ class CzechECommerceTransactionHeaderMapper extends ECommerceTransactionHeaderMa
     {
         parent::__construct(
             new DateFormat('d.m.Y'), // Date format
+            new \DateTimeZone('Europe/Prague'),
             'Číslo pokladny',
             'Číslo sumáře',
             'Datum transakce',

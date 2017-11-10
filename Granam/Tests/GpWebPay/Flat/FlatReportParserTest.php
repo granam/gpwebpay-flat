@@ -33,6 +33,9 @@ class FlatReportParserTest extends TestWithMockery
         self::assertSame(241585.0, $eCommerceTransactions->getPaidAmountInMerchantCurrencySummary());
         self::assertSame(-1219.88, $eCommerceTransactions->getFeesInMerchantCurrencySummary());
         self::assertSame(240365.12, $eCommerceTransactions->getPaidAmountWithoutFeesSummary());
+        foreach ($eCommerceTransactions as $transaction) {
+            self::assertSame('Europe/Prague', $transaction->getTransactionDate()->getTimezone()->getName());
+        }
 
         $silvesterTransactions = $flatContentFromCzechFile->getECommerceTransactions(new \DateTime('2017-12-31'));
         self::assertNull($silvesterTransactions);
