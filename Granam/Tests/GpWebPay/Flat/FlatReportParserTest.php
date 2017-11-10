@@ -21,7 +21,7 @@ class FlatReportParserTest extends TestWithMockery
     {
         $flatReportParser = new FlatReportParser();
         $flatContentFromCzechFile = $flatReportParser->createFlatContentFromCzechFile(
-            __DIR__ . '/../../../Documentations/cs/VDAT-000819-123450001-123450001-20160422.TXT',
+            __DIR__ . '/../../../Documentations/cs/VDAT-000819-123450001-123450001-20171109.TXT',
             new CzechECommerceTransactionHeaderMapper()
         );
         self::assertInstanceOf(FlatContent::class, $flatContentFromCzechFile);
@@ -43,7 +43,7 @@ class FlatReportParserTest extends TestWithMockery
         $flatReportParser = new FlatReportParser();
         $flatContent = $flatReportParser->createFlatContentFromCzechEmailAttachment(
             new ImapEmailAttachmentFetcher($this->getImapReadOnlyConnection()),
-            new \DateTime('2016-04-21'), // TODO email subject should be +1 day than attached report
+            new \DateTime('2017-11-09'),
             new CzechECommerceTransactionHeaderMapper()
         );
         self::assertNotNull($flatContent);
@@ -67,13 +67,14 @@ class FlatReportParserTest extends TestWithMockery
     {
         $imapEmailAttachmentFetcher = $this->createImapEmailAttachmentFetcher();
         $tomorrow = new \DateTime('tomorrow');
-        $afterTomorrow = $tomorrow->modify('+ 1 day');
+        $afterTomorrow = (clone $tomorrow)->modify('+ 1 day');
+        self::assertNotEquals($tomorrow, $afterTomorrow);
         $dateFormat = new DateFormat('Y~m~d FOO BAR');
         $imapEmailAttachmentFetcher->shouldReceive('fetchAttachments')
             ->once()
             ->with($this->type(ImapSearchCriteria::class))
             ->andReturnUsing(function (ImapSearchCriteria $imapSearchCriteria) use ($afterTomorrow, $dateFormat) {
-                self::assertSame($afterTomorrow, $imapSearchCriteria->getByDate());
+                self::assertEquals($afterTomorrow, $imapSearchCriteria->getByDate());
                 self::assertRegExp(
                     '~' . preg_quote($afterTomorrow->format($dateFormat->getAsString()), '~') . '$~',
                     $imapSearchCriteria->getSubjectContains()

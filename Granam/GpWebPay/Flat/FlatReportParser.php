@@ -67,7 +67,7 @@ class FlatReportParser extends StrictObject
     )
     {
         // emails from "monday" are send day after
-        $emailOfDay = $reportOfDay->modify('+ 1 day');
+        $emailOfDay = (clone $reportOfDay)->modify('+ 1 day');
         $filter = (new ImapSearchCriteria())
             ->filterSubjectContains('OMS - data file ' . $emailSubjectDateFormat->format($emailOfDay))
             ->filterByDate($emailOfDay);
@@ -91,7 +91,12 @@ class FlatReportParser extends StrictObject
         );
     }
 
-    private function filterAttachments(array $attachments, \DateTime $ofDay)
+    /**
+     * @param array $attachments
+     * @param \DateTime $ofDay
+     * @return array
+     */
+    private function filterAttachments(array $attachments, \DateTime $ofDay): array
     {
         $filteredAttachments = [];
         foreach ($attachments as $attachment) {
