@@ -26,14 +26,14 @@ $flatReportParser = new FlatReportParser();
 $imapConnection = new ImapReadOnlyConnection('light.in.tunnel@example.com', 'Раѕѕword123', 'imap.example.com' );
 $flatContentFromCzechEmail = $flatReportParser->createFlatContentFromCzechEmailAttachment(
     new ImapEmailAttachmentFetcher($imapConnection),
-    new \DateTime('2016-04-22'), // search for FLAT file with this date in email subject
+    new \DateTime('yesterday'), // search for FLAT file with yesterday report, but sent today
     new CzechECommerceTransactionHeaderMapper()
 );
 if($flatContentFromCzechEmail === null) {
-    die('No email with FLAT file has been found for a date 2016-04-22');
+    die('No email with FLAT file has been found for yesterday');
 }
 $eCommerceTransactions = $flatContentFromCzechEmail->getECommerceTransactions();
-echo 'We got '.$eCommerceTransactions->count().' of new purchases via GpWebPay gateway!';
+echo 'We got confirmed '.$eCommerceTransactions->count().' of yesterday purchases via GpWebPay gateway!';
 
 ```
 - verify that you have not missed a payment from a customer (what a shame!)
@@ -41,14 +41,14 @@ echo 'We got '.$eCommerceTransactions->count().' of new purchases via GpWebPay g
 <?php
 // ...
 /** @var \Granam\GpWebPay\Flat\Sections\ECommerceTransactions $eCommerceTransactions */
-$expectedIncome = require __DIR__ . '/expected_income.php';
+$expectedIncome = require __DIR__ . '/expected_income_from_yesterday.php';
 if ($expectedIncome !== $eCommerceTransactions->getPaidAmountWithoutFeesSummary()) {
     throw new \RuntimeException(
         "We have missing (or redundant) GpWebPay payments! Expected {$expectedIncome}, got ". $eCommerceTransactions->getPaidAmountWithoutFeesSummary()
     );
 }
 
-echo 'Our customers spent '.$eCommerceTransactions->getPaidAmountWithoutFeesSummary().'.-, we paid '
+echo 'Our customers spent on yesterday '.$eCommerceTransactions->getPaidAmountWithoutFeesSummary().'.-, we paid '
 .$eCommerceTransactions->getFeesInMerchantCurrencySummary().' to GpWebPay as fee'
 .' and we got '.$eCommerceTransactions->getPaidAmountWithoutFeesSummary();
 ```
