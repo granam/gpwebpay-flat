@@ -434,11 +434,14 @@ class FlatContent extends StrictObject
     }
 
     /**
+     * @param \DateTime $onlyTransactionsOfDay = null
      * @return ECommerceTransactions|null
      */
-    public function getECommerceTransactions():? ECommerceTransactions
+    public function getECommerceTransactions(\DateTime $onlyTransactionsOfDay = null):? ECommerceTransactions
     {
-        return $this->eCommerceTransactions;
+        return $onlyTransactionsOfDay === null
+            ? $this->eCommerceTransactions
+            : $this->eCommerceTransactions->filterByDay($onlyTransactionsOfDay);
     }
 
     /**

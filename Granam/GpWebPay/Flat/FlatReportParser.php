@@ -44,7 +44,7 @@ class FlatReportParser extends StrictObject
 
     /**
      * @param ImapEmailAttachmentFetcher $imapEmailAttachmentFetcher
-     * @param \DateTime $reportOfDay
+     * @param \DateTime $transactionsOfDay
      * @param DateFormat $emailSubjectDateFormat
      * @param string $flatAttachmentIsoEncoding
      * @param ECommerceTransactionHeaderMapper $eCommerceTransactionHeaderMapper
@@ -60,17 +60,17 @@ class FlatReportParser extends StrictObject
      */
     public function createFlatContentFromEmailAttachment(
         ImapEmailAttachmentFetcher $imapEmailAttachmentFetcher,
-        \DateTime $reportOfDay,
+        \DateTime $transactionsOfDay,
         DateFormat $emailSubjectDateFormat,
         string $flatAttachmentIsoEncoding,
         ECommerceTransactionHeaderMapper $eCommerceTransactionHeaderMapper
     )
     {
-        // emails from "monday" are send day after
-        $emailOfDay = (clone $reportOfDay)->modify('+ 1 day');
+        // report of "monday" is send a day after
+        $reportOfDay = (clone $transactionsOfDay)->modify('+ 1 day');
         $filter = (new ImapSearchCriteria())
-            ->filterSubjectContains('OMS - data file ' . $emailSubjectDateFormat->format($emailOfDay))
-            ->filterByDate($emailOfDay);
+            ->filterSubjectContains('OMS - data file ' . $emailSubjectDateFormat->format($reportOfDay))
+            ->filterByDate($reportOfDay);
         $attachments = $imapEmailAttachmentFetcher->fetchAttachments($filter);
         $attachments = $this->filterAttachments($attachments, $reportOfDay);
         if (count($attachments) === 0) {
@@ -78,7 +78,8 @@ class FlatReportParser extends StrictObject
         }
         if (count($attachments) > 1) {
             throw new Exceptions\TooManyFlatAttachmentsFromSingleDay(
-                'Expected a single email attachment with a FLAT file for date ' . $reportOfDay->format('c')
+                'Expected a single email attachment with a FLAT file of date ' . $reportOfDay->format('c')
+                . ' (with transactions of date ' . $transactionsOfDay->format('c') . ')'
                 . ', got ' . count($attachments) . ' of them: ' . var_export($attachments, true)
             );
         }

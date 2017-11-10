@@ -26,13 +26,13 @@ $flatReportParser = new FlatReportParser();
 $imapConnection = new ImapReadOnlyConnection('light.in.tunnel@example.com', 'Раѕѕword123', 'imap.example.com' );
 $flatContentFromCzechEmail = $flatReportParser->createFlatContentFromCzechEmailAttachment(
     new ImapEmailAttachmentFetcher($imapConnection),
-    new \DateTime('yesterday'), // search for FLAT file with yesterday report, but sent today
+    $yesterday = new \DateTime('yesterday'), // search for FLAT file with yesterday report, but sent today
     new CzechECommerceTransactionHeaderMapper()
 );
 if($flatContentFromCzechEmail === null) {
     die('No email with FLAT file has been found for yesterday');
 }
-$eCommerceTransactions = $flatContentFromCzechEmail->getECommerceTransactions();
+$eCommerceTransactions = $flatContentFromCzechEmail->getECommerceTransactions($yesterday /* have to filter them because more days can be covered by a single report */);
 echo 'We got confirmed '.$eCommerceTransactions->count().' of yesterday purchases via GpWebPay gateway!';
 
 ```
