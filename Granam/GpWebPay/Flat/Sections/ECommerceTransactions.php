@@ -15,9 +15,11 @@ class ECommerceTransactions extends MultiLineFlatSection implements \IteratorAgg
     private $transactions = [];
     /** @var ECommerceTransactionHeaderMapper */
     private $eCommerceTransactionHeaderMapper;
+    /** @var array|string[][][] */
+    private $originalValuesPerDay = [];
 
     /**
-     * @param array $values
+     * @param array|string[] $values
      * @param HeaderOfSection $headerOfSection
      * @param ECommerceTransactionHeaderMapper $eCommerceTransactionHeaderMapper
      * @throws \Granam\GpWebPay\Flat\Exceptions\CorruptedFlatStructure
@@ -32,24 +34,74 @@ class ECommerceTransactions extends MultiLineFlatSection implements \IteratorAgg
         parent::__construct($values, $headerOfSection);
     }
 
+    /**
+     * @param array|string[] $values
+     * @throws \Granam\GpWebPay\Flat\Exceptions\CorruptedFlatStructure
+     */
     public function addValues(array $values)
     {
         parent::addValues($values);
         $allMappedValues = $this->getValues();
-        $this->addTransaction(end($allMappedValues), $this->eCommerceTransactionHeaderMapper);
+        $this->addTransaction(end($allMappedValues), $this->eCommerceTransactionHeaderMapper, $values);
     }
 
-    private function addTransaction(array $mappedValues, ECommerceTransactionHeaderMapper $eCommerceTransactionHeaderMapper)
+    private function addTransaction(
+        array $mappedValues,
+        ECommerceTransactionHeaderMapper $eCommerceTransactionHeaderMapper,
+        array $originalValues
+    )
     {
-        $this->transactions[] = new ECommerceTransaction($mappedValues, $eCommerceTransactionHeaderMapper);
+        $transaction = new ECommerceTransaction($mappedValues, $eCommerceTransactionHeaderMapper);
+        $this->transactions[] = $transaction;
+        $this->originalValuesPerDay[$transaction->getTransactionDate()->format('Y-m-d')][] = $originalValues;
     }
 
     /**
+     * @param \DateTime $onlyTransactionsOfDay
+     * @return ECommerceTransactions|null
+     */
+    public function filterByDay(\DateTime $onlyTransactionsOfDay)
+    {
+        if ($this->count() === 0 // nothing to filter at all
+            // or all transactions are from required day
+            || (count($this->originalValuesPerDay) === 1 && array_key_exists($onlyTransactionsOfDay->format('Y-m-d'), $this->originalValuesPerDay))
+        ) {
+            return $this; // no change needed
+        }
+        $originalValues = $this->originalValuesPerDay[$onlyTransactionsOfDay->format('Y-m-d')] ?? false;
+        if (!$originalValues) {
+            return null; // no transactions for that day
+        }
+        /** @noinspection ExceptionsAnnotatingAndHandlingInspection */
+        $eCommerceTransactions = new static(
+            array_pop($originalValues), // also removes one item / transaction
+            $this->getHeaderOfSection(),
+            $this->eCommerceTransactionHeaderMapper
+        );
+        foreach ($originalValues /* already one transaction less */ as $originalValuesForTransaction) {
+            /** @noinspection ExceptionsAnnotatingAndHandlingInspection */
+            $eCommerceTransactions->addValues($originalValuesForTransaction);
+        }
+
+        return $eCommerceTransactions;
+    }
+
+    /**
+     * @param \DateTime $onlyTransactionsOfDay = null
      * @return array|ECommerceTransaction[]
      */
-    public function getTransactions(): array
+    public function getTransactions(\DateTime $onlyTransactionsOfDay = null): array
     {
-        return $this->transactions;
+        if ($onlyTransactionsOfDay === null) {
+            return $this->transactions;
+        }
+
+        return array_filter(
+            $this->getTransactions(),
+            function (ECommerceTransaction $transaction) use ($onlyTransactionsOfDay) {
+                return $onlyTransactionsOfDay->format('Ymd') === $transaction->getTransactionDate()->format('Ymd');
+            }
+        );
     }
 
     public function getIterator(): \Traversable
@@ -62,43 +114,59 @@ class ECommerceTransactions extends MultiLineFlatSection implements \IteratorAgg
         return count($this->getTransactions());
     }
 
-    public function getSummary(): float
+    /**
+     * @param \DateTime|null $onlyTransactionsOfDay
+     * @return float
+     */
+    public function getSummary(\DateTime $onlyTransactionsOfDay = null): float
     {
-        return $this->getPaidAmountInMerchantCurrencySummary();
+        return $this->getPaidAmountInMerchantCurrencySummary($onlyTransactionsOfDay);
     }
 
-    public function getPaidAmountInMerchantCurrencySummary(): float
+    /**
+     * @param \DateTime|null $onlyTransactionsOfDay
+     * @return float
+     */
+    public function getPaidAmountInMerchantCurrencySummary(\DateTime $onlyTransactionsOfDay = null): float
     {
         return array_sum(
             array_map(
                 function (ECommerceTransaction $transaction) {
                     return $transaction->getPaidAmountInMerchantCurrency();
                 },
-                $this->getTransactions()
+                $this->getTransactions($onlyTransactionsOfDay)
             )
         );
     }
 
-    public function getFeesInMerchantCurrencySummary(): float
+    /**
+     * @param \DateTime|null $onlyTransactionsOfDay
+     * @return float
+     */
+    public function getFeesInMerchantCurrencySummary(\DateTime $onlyTransactionsOfDay = null): float
     {
         return array_sum(
             array_map(
                 function (ECommerceTransaction $transaction) {
                     return $transaction->getFeesInMerchantCurrency();
                 },
-                $this->getTransactions()
+                $this->getTransactions($onlyTransactionsOfDay)
             )
         );
     }
 
-    public function getPaidAmountWithoutFeesSummary(): float
+    /**
+     * @param \DateTime|null $onlyTransactionsOfDay
+     * @return float
+     */
+    public function getPaidAmountWithoutFeesSummary(\DateTime $onlyTransactionsOfDay = null): float
     {
         return array_sum(
             array_map(
                 function (ECommerceTransaction $transaction) {
                     return $transaction->getPaidAmountWithoutFees();
                 },
-                $this->getTransactions()
+                $this->getTransactions($onlyTransactionsOfDay)
             )
         );
     }

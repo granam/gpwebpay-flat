@@ -21,7 +21,8 @@ class FlatReportParserTest extends TestWithMockery
     {
         $flatReportParser = new FlatReportParser();
         $flatContentFromCzechFile = $flatReportParser->createFlatContentFromCzechFile(
-            __DIR__ . '/../../../Documentations/cs/VDAT-000819-123450001-123450001-20171109.TXT',
+            __DIR__ . '/../../../Documentations/cs/Vzor FLAT.txt',
+            //             __DIR__ . '/data/VDAT-000819-123450001-123450001-20171110.TXT',
             new CzechECommerceTransactionHeaderMapper()
         );
         self::assertInstanceOf(FlatContent::class, $flatContentFromCzechFile);
