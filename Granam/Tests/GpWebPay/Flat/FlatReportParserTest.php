@@ -2,14 +2,17 @@
 namespace Granam\Tests\GpWebPay\Flat;
 
 use Granam\GpWebPay\Flat\CzechECommerceTransactionHeaderMapper;
+use Granam\GpWebPay\Flat\DateFormat;
 use Granam\GpWebPay\Flat\FlatContent;
 use Granam\GpWebPay\Flat\FlatReportParser;
 use Granam\Mail\Download\ImapEmailAttachmentFetcher;
 use Granam\Mail\Download\ImapReadOnlyConnection;
+use Granam\Mail\Download\ImapSearchCriteria;
 use Granam\Tests\Mail\Download\ImapEmailAttachmentFetcherTest;
-use PHPUnit\Framework\TestCase;
+use Granam\Tests\Tools\TestWithMockery;
+use Mockery\MockInterface;
 
-class FlatReportParserTest extends TestCase
+class FlatReportParserTest extends TestWithMockery
 {
     /**
      * @test
@@ -18,7 +21,7 @@ class FlatReportParserTest extends TestCase
     {
         $flatReportParser = new FlatReportParser();
         $flatContentFromCzechFile = $flatReportParser->createFlatContentFromCzechFile(
-            __DIR__ . '/../../../Documentations/cs/VDAT-000819-123450001-123450001-20160422.TXT',
+            __DIR__ . '/../../../Documentations/cs/VDAT-000819-123450001-123450001-20171109.TXT',
             new CzechECommerceTransactionHeaderMapper()
         );
         self::assertInstanceOf(FlatContent::class, $flatContentFromCzechFile);
@@ -40,7 +43,7 @@ class FlatReportParserTest extends TestCase
         $flatReportParser = new FlatReportParser();
         $flatContent = $flatReportParser->createFlatContentFromCzechEmailAttachment(
             new ImapEmailAttachmentFetcher($this->getImapReadOnlyConnection()),
-            new \DateTime('2016-04-22'),
+            new \DateTime('2017-11-09'),
             new CzechECommerceTransactionHeaderMapper()
         );
         self::assertNotNull($flatContent);
@@ -55,5 +58,47 @@ class FlatReportParserTest extends TestCase
         $getImapReadOnlyConnection->setAccessible(true);
 
         return $getImapReadOnlyConnection->invoke(new ImapEmailAttachmentFetcherTest());
+    }
+
+    /**
+     * @test
+     */
+    public function I_can_create_flat_content_from_email_attachment_of_specific_day()
+    {
+        $imapEmailAttachmentFetcher = $this->createImapEmailAttachmentFetcher();
+        $tomorrow = new \DateTime('tomorrow');
+        $afterTomorrow = (clone $tomorrow)->modify('+ 1 day');
+        self::assertNotEquals($tomorrow, $afterTomorrow);
+        $dateFormat = new DateFormat('Y~m~d FOO BAR');
+        $imapEmailAttachmentFetcher->shouldReceive('fetchAttachments')
+            ->once()
+            ->with($this->type(ImapSearchCriteria::class))
+            ->andReturnUsing(function (ImapSearchCriteria $imapSearchCriteria) use ($afterTomorrow, $dateFormat) {
+                self::assertEquals($afterTomorrow, $imapSearchCriteria->getByDate());
+                self::assertRegExp(
+                    '~' . preg_quote($afterTomorrow->format($dateFormat->getAsString()), '~') . '$~',
+                    $imapSearchCriteria->getSubjectContains()
+                );
+
+                return [];
+            });
+        $flatReportParser = new FlatReportParser();
+        $flatContent = $flatReportParser->createFlatContentFromEmailAttachment(
+            $imapEmailAttachmentFetcher,
+            $tomorrow,
+            $dateFormat,
+            'UTF-8',
+            new CzechECommerceTransactionHeaderMapper()
+        );
+
+        self::assertNull($flatContent);
+    }
+
+    /**
+     * @return ImapEmailAttachmentFetcher|MockInterface
+     */
+    private function createImapEmailAttachmentFetcher(): ImapEmailAttachmentFetcher
+    {
+        return $this->mockery(ImapEmailAttachmentFetcher::class);
     }
 }
